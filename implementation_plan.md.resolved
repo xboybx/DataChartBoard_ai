@@ -1,0 +1,79 @@
+# AI Data Analyst Dashboard - Project Architecture & Stages
+
+This document outlines the architecture, tech stack recommendation, and development stages for the AI Data Analyst Dashboard.
+
+## 1. Tech Stack Recommendation
+
+You asked whether to use **React with Express** or **Next.js**. 
+
+**Our Recommendation: Next.js**
+*   **Why?** Next.js is a full-stack React framework. It allows you to build both your React frontend and your backend API routes in a single repository. This drastically reduces the boilerplate of setting up a separate Express server and makes deploying the app much easier.
+*   **Database**: **MongoDB** – Great for storing user sessions, chat history, and dataset metadata (e.g., table schemas).
+*   **Data Processing**: **Papa Parse** – Excellent and fast CSV parser that can run on both the client (browser) and server.
+*   **AI Integration**: **OpenRouter** (using OpenAI SDK) – To handle the natural language requests and convert them into actionable logic.
+*   **Visualizations**: **Recharts** or **Chart.js** (Recommended addition) – For rendering the dynamic bar, line, and pie charts.
+
+> [!TIP]
+> If you think you might need heavy data science libraries (like Pandas) in the future, you might eventually need a Python backend. But for Javascript-based filtering and AI logic, Next.js is perfect to start.
+
+---
+
+## 2. System Architecture
+
+The architecture will consist of the following flow:
+
+### A. Frontend (Client-Side)
+1.  **Upload Module:** Allows users to drop CSV files.
+2.  **Chat Interface:** A conversational UI for users to ask questions in plain English (e.g., "Show me the top 5 products").
+3.  **Visualization Dashboard:** A dynamic area that renders charts based on the AI's response and processed data.
+
+### B. Backend (Next.js API Routes)
+1.  **Data Ingestion API:** Receives the CSV. For massive CSVs, we'll store the file on disk (or in Cloud Storage like AWS S3/Vercel Blob) and save the file path + metadata to MongoDB.
+2.  **LLM Brain (OpenRouter API):** 
+    *   Takes the user's natural language question.
+    *   Takes the CSV Schema (NOT the whole data, just column names to save tokens and ensure privacy).
+    *   Prompts the AI to generate a **SQL Query**.
+3.  **Data Processing Engine (DuckDB):** 
+    *   **Handling Massive CSVs:** Instead of manually looping over arrays via Papa Parse, we will use **DuckDB** on the backend. DuckDB is an in-process SQL OLAP database maker that can query massive CSV files directly from disk incredibly fast with a very low memory footprint. The AI generates the SQL, DuckDB runs it on the CSV, and returns the small results set to the frontend.
+
+### C. Database & Storage
+*   **MongoDB:** 
+    *   **`Datasets` Collection:** Stores metadata (File Name, Schema, File Path on disk/blob).
+    *   **`Chats` Collection:** Stores the history of questions and answers.
+*   **File Storage:** Raw `.csv` files are stored in `public/uploads` (locally) or an S3 bucket instead of the MongoDB document to handle massive sizes efficiently.
+
+---
+
+## 3. Project Development Stages
+
+We will break the project down into 5 manageable stages.
+
+### Stage 1: Foundation & UI Setup
+*   Initialize Next.js project with **Tailwind CSS**.
+*   Design and build the **Layout**: Navbar, File Upload Zone, Chat Panel, and empty Chart Panel.
+*   **What it does:** Creates the visual shell of the application to ensure it looks premium and professional.
+
+### Stage 2: File Upload Engine
+*   Implement drag-and-drop CSV upload on the frontend.
+*   Setup Next.js API file upload handling (using `multer` or similar).
+*   Extract the column headers and preview the first 5 rows on the screen.
+*   **What it does:** Allows the app to securely capture and read the user's raw data.
+
+### Stage 3: Database & State Management
+*   Connect to **MongoDB**.
+*   Create API routes to save the file metadata to MongoDB.
+*   Build the state management to remember which dataset is currently "active" during a chat.
+*   **What it does:** Gives the dashboard a memory, so users don't have to re-upload files on every refresh.
+
+### Stage 4: AI & DuckDB Processing (The Core)
+*   Set up the **OpenRouter SDK** and **DuckDB CLI/Node package**.
+*   Create an API route `/api/ask` that takes the user's question and dataset schema.
+*   Write the **System Prompt**, instructing the AI: "You are a Data Analyst. Convert this query to DuckDB SQL."
+*   Execute the AI's SQL query onto the CSV file using DuckDB.
+*   **What it does:** Connects the user's plain English to the actual data manipulation.
+
+### Stage 5: Dynamic Visualizations
+*   Integrate a charting library (like Recharts).
+*   Create a dynamic component that reads the data result and automatically renders the correct chart.
+*   Display the text insights below the chart.
+*   **What it does:** Visualizes the final answer for the user beautifully.
