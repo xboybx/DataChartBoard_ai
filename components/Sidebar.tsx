@@ -117,7 +117,7 @@ export default function Sidebar() {
                         <div className="px-2 py-1 text-sm text-gray-900 truncate font-semibold">{session?.user?.name || "Analyzer"}</div>
                         <div className="px-2 text-xs text-gray-500 truncate mb-2">{session?.user?.email || "user@plasma.app"}</div>
                         <div className="h-px bg-gray-100 my-1.5"></div>
-                        <button 
+                        <button
                             onClick={() => signOut({ callbackUrl: '/login' })}
                             className="w-full flex items-center gap-2 px-2 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors text-left"
                         >
@@ -126,8 +126,8 @@ export default function Sidebar() {
                         </button>
                     </div>
                 )}
-                
-                <button 
+
+                <button
                     onClick={() => {
                         if (isCollapsed) {
                             signOut({ callbackUrl: '/login' });
@@ -152,7 +152,7 @@ export default function Sidebar() {
                     </div>
                     {!isCollapsed && (
                         <div className="text-gray-400">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6" /></svg>
                         </div>
                     )}
                 </button>
