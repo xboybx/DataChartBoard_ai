@@ -105,11 +105,38 @@ export async function POST(req, { params }) {
             }
 
             // Clean the AI response by removing markdown and trimming whitespace
-            const jsonStringMatch = aiResponseRaw.content.match(/\{[\s\S]*\}/);
+            const jsonStringMatch = aiResponseRaw.content.match(/\{[\s\S]*\}?/);
 
             if (!jsonStringMatch) throw new Error("No JSON object found in response");
 
-            const aiJson = JSON.parse(jsonStringMatch[0]);
+            let jsonStr = jsonStringMatch[0];
+
+            // Attempt to repair truncated JSON by balancing braces/brackets
+            let aiJson;
+            try {
+                aiJson = JSON.parse(jsonStr);
+            } catch (parseErr) {
+                console.warn("Initial JSON parse failed, attempting repair...");
+                // Count unmatched openers (ignoring those inside strings)
+                let inString = false;
+                let escape = false;
+                const stack = [];
+                for (let i = 0; i < jsonStr.length; i++) {
+                    const ch = jsonStr[i];
+                    if (escape) { escape = false; continue; }
+                    if (ch === '\\' && inString) { escape = true; continue; }
+                    if (ch === '"') { inString = !inString; continue; }
+                    if (inString) continue;
+                    if (ch === '{') stack.push('}');
+                    else if (ch === '[') stack.push(']');
+                    else if (ch === '}' || ch === ']') stack.pop();
+                }
+                // Append missing closers in reverse order
+                const closers = stack.reverse().join('');
+                jsonStr = jsonStr + closers;
+                aiJson = JSON.parse(jsonStr);
+                console.log("JSON repair succeeded by appending:", closers);
+            }
 
             analysis = aiJson?.analysis || "Visualization generated successfully.";
             chart = aiJson.chart || null;

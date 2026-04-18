@@ -7,7 +7,22 @@ import { AlertTriangle } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Filler, BarElement);
 
-const ChartDisplay = ({ chartData }) => {
+interface ChartData {
+    type: 'bar' | 'line' | 'pie' | 'doughnut' | 'polarArea' | 'radar';
+    data: {
+        labels: string[];
+        datasets: Array<{
+            label: string;
+            data: number[];
+            backgroundColor?: string | string[];
+            borderColor?: string | string[];
+            borderWidth?: number;
+        }>;
+    };
+    options?: any;
+}
+
+const ChartDisplay = ({ chartData }: { chartData: ChartData }) => {
     const dataIsValid =
         chartData &&
         chartData.data &&

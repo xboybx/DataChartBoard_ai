@@ -15,6 +15,24 @@ type Message = {
     chartData?: any;
 };
 
+interface ChartDataset {
+    label: string;
+    data: any[];
+    backgroundColor?: string | string[];
+    borderColor?: string | string[];
+    borderWidth?: number;
+}
+
+interface ChartInfo {
+    type: string;
+    data: {
+        labels: string[];
+        datasets: ChartDataset[];
+    };
+    options?: any;
+}
+
+
 export default function ChatInterface({ chatId }: { chatId: string }) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
@@ -101,9 +119,9 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
             // Handle charts being an array or a single object
             if (chart) {
                 let chartDataArray = Array.isArray(chart) ? chart : [chart];
-                chartDataArray.forEach(c => {
+                chartDataArray.forEach((c: ChartInfo) => {
                     if (c && c.data && c.data.datasets) {
-                        c.data.datasets = c.data.datasets.map(dataset => ({
+                        c.data.datasets = c.data.datasets.map((dataset: ChartDataset) => ({
                             ...dataset,
                             backgroundColor: dataset.backgroundColor || [
                                 'rgba(217, 70, 239, 0.8)', // Fuchsia

@@ -8,7 +8,7 @@ const openai = new OpenAI({
 
 
 export const AiGeneration = async (message) => {
-    const model = "Meta Llama 3.3 70B Instruct";
+    const model = "GLM 4.5 Air";
 
     try {
         const completion = await openai.chat.completions.create({

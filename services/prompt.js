@@ -16,6 +16,7 @@ The JSON object must contain two keys:
 2. "chart": A SINGLE Chart.js compatible JSON configuration object if a chart is requested, otherwise null. Do NOT return an array.
 
 CRITICAL: Your entire response must be a single, complete, and valid JSON object. Do NOT use abbreviations like "..." or comments like "//". The JSON must be ready for parsing with no extra characters or explanations.
+CRITICAL: Keep the JSON compact — use short analysis text (under 500 characters). ALWAYS close ALL braces and brackets. A truncated response is useless.
 
 
 --- CHART DATA STRUCTURE ---
@@ -60,7 +61,7 @@ If the chart request is NOT feasible:
       }]
     },
     "options": {
-      "indexAxis": "y", // Use "y" for horizontal bars
+      "indexAxis": "y",
       "plugins": {
         "legend": {
           "display": false
