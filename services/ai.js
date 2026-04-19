@@ -3,14 +3,15 @@ import { systemPrompt } from './prompt';
 import { standardTools } from './tools';
 
 const openai = new OpenAI({
-    baseURL: process.env.CLOD_BASE_URL,
-    apiKey: process.env.CLOD_API_KEY,
+    baseURL: process.env.AI_BASE_URL,
+    apiKey: process.env.Groq_api_Key,
 });
 
 
 export const AiGeneration = async (message) => {
 
-    const model = "Qwen 3 235B A22B Thinking 2507";
+    const model = process.env.GROQ_MODEL_NAME
+
 
     try {
         const completion = await openai.chat.completions.create({
