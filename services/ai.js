@@ -8,7 +8,7 @@ const openai = new OpenAI({
 
 
 export const AiGeneration = async (message) => {
-    const model = "llama-3.3-70b-versatile";
+    const model = process.env.GROQ_MODEL_NAME;
 
     try {
         const completion = await openai.chat.completions.create({
