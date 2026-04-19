@@ -2,13 +2,13 @@ import OpenAI from 'openai';
 import { systemPrompt } from './prompt';
 
 const openai = new OpenAI({
-    baseURL: 'https://api.clod.io/v1',
-    apiKey: process.env.OPEN_ROUTER_API_KEY,
+    baseURL: process.env.AI_BASE_URL,
+    apiKey: process.env.Groq_api_Key,
 });
 
 
 export const AiGeneration = async (message) => {
-    const model = "GLM 4.5 Air";
+    const model = "llama-3.3-70b-versatile";
 
     try {
         const completion = await openai.chat.completions.create({

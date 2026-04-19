@@ -13,7 +13,7 @@ ${history || "No previous history."}
 You MUST respond with a single, valid, raw JSON object. Do NOT wrap it in markdown (e.g., \`\`\`json).
 The JSON object must contain two keys:
 1. "analysis": A clear, accurate textual analysis based ONLY on the dataset.
-2. "chart": A SINGLE Chart.js compatible JSON configuration object if a chart is requested, otherwise null. Do NOT return an array.
+2. "chart": A Multiple Chart.js compatible JSON configuration object if a chart is requested, otherwise null. Do NOT return an array.
 
 CRITICAL: Your entire response must be a single, complete, and valid JSON object. Do NOT use abbreviations like "..." or comments like "//". The JSON must be ready for parsing with no extra characters or explanations.
 CRITICAL: Keep the JSON compact — use short analysis text (under 500 characters). ALWAYS close ALL braces and brackets. A truncated response is useless.
