@@ -103,10 +103,11 @@ export async function POST(req) {
         const aiResponseRaw = await AiGeneration(contextPrompt);//This prompt is appended in usermessage
         console.log("The ai respnse Before bukding charts data: ", aiResponseRaw)
 
-        if (!aiResponseRaw) { return NextResponse.json({ error: "AI failed to respond. Check server logs for API errors." }, { status: 500 }); }
 
-        let analysis = "No Analysis Provided";
+        if (!aiResponseRaw) { return NextResponse.json({ error: "AI failed to respond. Check server logs for API errors." }, { status: 500 }); }
+        let analysis = "Here is you Analysis: ";
         let chart = [];
+
 
         //Check weather ai decided to call the "Generate_charts" Tool
         if (aiResponseRaw.tool_calls && aiResponseRaw.tool_calls.length > 0) {

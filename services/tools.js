@@ -1,6 +1,6 @@
 export const generateChartsSchema = {
     name: "generate_charts",
-    description: "Generates one or multiple Chart.js configurations based on the dataset. Use this when the user asks for a chart or visualization.",
+    description: "Generates a comprehensive dashboard with multiple Chart.js configurations based on the dataset. Use this to provide 360-degree data insights using at least 2-3 charts of different types.",
     parameters: {
         type: "object",//the reaponse that i gives is object type
         properties: {
