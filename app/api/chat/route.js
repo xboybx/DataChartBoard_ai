@@ -6,8 +6,7 @@ import Chat from "@/models/Chat";
 import Message from "@/models/Message";
 import Dataset from "@/models/Dataset";
 import { AiGeneration } from "@/services/ai";
-import { generateDataPrompt } from "@/services/prompt";
-
+import { buildMessageArray } from "../../../services/prompt";
 //Get Chats Route
 export async function GET(req) {
     try {
@@ -57,7 +56,7 @@ export async function POST(req) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
-        //fetch the dataset, input ot message
+        //1.fetch the dataset, input ot message
         /* This input or message will come from front chat input
         This dataset Id comes ,when we upload a file, it hits the upload engine Route
         and creates a new doc in db and that gives the datasetId
@@ -74,14 +73,22 @@ export async function POST(req) {
             return NextResponse.json({ error: "Dataset not found" }, { status: 404 });
         }
 
-        /* Create a new Document to push to db */
+        /* 2.Create a new Document to push to db */
         const newChat = await Chat.create({
             userId: session.user.id,
             datasetId,
             title: message.substring(0, 30) + "..." // Fixed typo to 'title'
         })
 
-        /* Save this user message cam from frontend to db */
+        /*3.build Message array  */
+        const messagesArray = buildMessageArray(
+            dataset.headers,
+            dataset.previewData,
+            [], // Empty history
+            message
+        );
+
+        /* 4.Save this user message cam from frontend to db */
         await Message.create({
             chatId: newChat._id,
             role: "user",
@@ -89,63 +96,67 @@ export async function POST(req) {
         })
 
         console.log("generating prompt with prompt and the context")
-        /* Prepare AI Context using central service */
-        const contextPrompt = generateDataPrompt(dataset.headers, dataset.previewData, message);
 
-        if (!contextPrompt) {
-            console.log("Error in Prompt Generation");
-            throw new Error("Error in Generation context ai prompt")
+
+
+        /*5. Send the data to ai , with the build message arrary*/
+        let aiResponseRaw;
+        try {
+            aiResponseRaw = await AiGeneration(messagesArray);
+            console.log("The ai respnse Before building charts data: ", aiResponseRaw)
+        } catch (aiError) {
+            console.error("🔎 [START ROUTE] AI Error Detection:", aiError.status);
+            if (aiError.status === 429) {
+                // Extract the raw message from the provider (e.g. Groq details)
+                const providerMessage = aiError.error?.message || aiError.message || "Rate limit reached.";
+                return NextResponse.json({ 
+                    error: providerMessage,
+                    code: "RATE_LIMIT_EXCEEDED"
+                }, { status: 429 });
+            }
+            throw aiError; // Pass to general handler
         }
-        console.log(" Prompt Generated");
 
-
-        /* Send the data to ai , The parsed and the users query */
-        const aiResponseRaw = await AiGeneration(contextPrompt);//This prompt is appended in usermessage
-        console.log("The ai respnse Before bukding charts data: ", aiResponseRaw)
-
-
-        if (!aiResponseRaw) { return NextResponse.json({ error: "AI failed to respond. Check server logs for API errors." }, { status: 500 }); }
-        let analysis = "Here is you Analysis: ";
+        if (!aiResponseRaw) { return NextResponse.json({ error: "AI failed to respond. Check server logs." }, { status: 500 }); }
+        let analysis = "Here is your Analysis: ";
         let chart = [];
 
 
-        //Check weather ai decided to call the "Generate_charts" Tool
+        //6.Check weather ai decided to call the "Generate_charts" Tool
         if (aiResponseRaw.tool_calls && aiResponseRaw.tool_calls.length > 0) {
-            /* Now Ai sees the tools it has acess to and genreates a response ,that it want to call a tool 
-            In that respponse we need to see it there is a tool call we nee to loop and see wich function it want to execute
-            */
+            console.log(`🛠️ [START ROUTE] AI requested ${aiResponseRaw.tool_calls.length} tool calls.`);
 
-            for (const toolCall of aiResponseRaw.tool_calls) { //It contains all the standartTools we Defined
-                /* now we take tool call name and its relative mapped function */
+            for (const toolCall of aiResponseRaw.tool_calls) {
                 const functionName = toolCall.function.name;
+                console.log(`🔧 [START ROUTE] Executing logical tool: ${functionName}`);
 
                 try {
-                    /* Now Parse the arguments the ai provided for this function */
-                    const args = JSON.parse(toolCall.function.arguments)
+                    const args = JSON.parse(toolCall.function.arguments);
+                    console.log(`📦 [START ROUTE] Parsed Arguments for ${functionName}:`, {
+                        chartsCount: args.charts?.length,
+                        hasAnalysis: !!args.analysis
+                    });
+
                     switch (functionName) {
                         case "generate_charts":
-                            /* Extrac the data */
-                            analysis = args.analysis || aiResponseRaw.content || "Here is the Visulaization based on your Contenet: ";
-
-                            chart = args.charts || []
-                            console.log("sucessfully generated the charts ", chart.length)
+                            analysis = args.analysis || "Analysis complete.";
+                            chart = args.charts || [];
+                            console.log("📊 [START ROUTE] Successfully extracted chart data.");
                             break;
 
                         default:
-                            console.log('Unknown Tool Call', functionName)
+                            console.log('⚠️ [START ROUTE] Unknown Tool Call', functionName);
                     }
 
                 } catch (error) {
-                    console.error("Error parsing tool arguments: ", error);
-                    throw NextResponse.json({ message: "Calling Tool Failed" }, { status: 400 })
+                    console.error("❌ [START ROUTE] Error parsing tool arguments: ", error);
+                    return NextResponse.json({ message: "Calling Tool Failed" }, { status: 400 });
                 }
-
             }
-
         } else if (aiResponseRaw.content) {
+            console.log("💬 [START ROUTE] AI responded with plain text only.");
             analysis = aiResponseRaw.content;
             chart = [];
-            console.log("AI responded with plain text only.");
         }
 
         // Ensure content is not empty for the database
@@ -169,7 +180,7 @@ export async function POST(req) {
 
     }
     catch (error) {
-        console.error("Create Chat API Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("Create Chat API Error:", error.message);
+        return NextResponse.json({ error: "Something went wrong. Please try again later." }, { status: 500 });
     }
 }

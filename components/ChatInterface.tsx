@@ -113,6 +113,18 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
 
             const data = await res.json();
 
+
+            // Handle API Errors (Rate limits, etc.)
+            if (!res.ok) {
+                const errorMsg: Message = {
+                    role: "assistant",
+                    content: `⚠️ **Error:** ${data.error || "Failed to get a response. Please try again later."}`,
+                };
+                setMessages(prev => [...prev, errorMsg]);
+                setIsLoading(false);
+                return;
+            }
+
             const content = data.analysis || data.response;
             let chart = data.chart || data.chartData;
 
@@ -151,7 +163,11 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
             }
         } catch (error) {
             console.error("Error sending message:", error);
-            alert("Failed to get response.");
+            const systemError: Message = {
+                role: "assistant",
+                content: "❌ **Connection Error:** Could not reach the server. Please check your internet and try again."
+            };
+            setMessages(prev => [...prev, systemError]);
         } finally {
             setIsLoading(false);
         }
@@ -164,7 +180,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
     return (
         <div ref={containerRef} className="flex w-full h-full bg-[#f8fafc] relative overflow-hidden">
             {/* --- LEFT SIDEBAR: CHAT INTERFACE --- */}
-            <div 
+            <div
                 className={clsx(
                     "h-full border-r border-gray-200/60 bg-white/50 backdrop-blur-3xl flex flex-col z-20 shadow-[10px_0_30px_rgba(0,0,0,0.02)] overflow-hidden",
                     isDragging && "transition-none"
@@ -291,7 +307,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
             />
 
             {/* --- RIGHT MAIN STAGE: DASHBOARD --- */}
-            <div 
+            <div
                 className="flex-1 flex flex-col relative z-20 h-full overflow-hidden bg-gradient-to-br from-gray-50 to-[#f8fafc]"
                 style={{ width: `${100 - chatWidth}%` }}
             >
@@ -314,15 +330,15 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
 
                 <div className="flex-1 p-6 lg:p-10 flex flex-col justify-start overflow-y-auto w-full relative">
                     <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
-                    
+
                     {activeChartData ? (
                         <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-8 pb-20 relative z-10">
                             {Array.isArray(activeChartData) ? (
                                 activeChartData.map((chartItem, idx) => {
                                     const isFullWidth = (idx === 0 && activeChartData.length % 2 !== 0) || activeChartData.length === 1;
                                     return (
-                                        <div 
-                                            key={idx} 
+                                        <div
+                                            key={idx}
                                             className={clsx(
                                                 "w-full shrink-0 border border-white bg-white/70 backdrop-blur-2xl rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-col gap-6 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500",
                                                 isFullWidth ? "xl:col-span-2" : "col-span-1"
@@ -334,7 +350,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
                                                     {chartItem.type ? chartItem.type.charAt(0).toUpperCase() + chartItem.type.slice(1) : "Analysis"} Widget
                                                 </h3>
                                             </div>
-                                            
+
                                             <div className={clsx("w-full relative", isFullWidth ? "h-[480px]" : "h-[350px]")}>
                                                 <ErrorBoundary>
                                                     <ChartDisplay chartData={chartItem} />
@@ -343,7 +359,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
 
                                             {chartItem.explanation && (
                                                 <div className="mt-auto bg-white/60 text-gray-700 text-[14px] font-medium leading-relaxed border border-gray-100 rounded-xl p-5 shadow-sm inline-block w-full">
-                                                    <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span> 
+                                                    <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span>
                                                     {chartItem.explanation}
                                                 </div>
                                             )}
@@ -365,7 +381,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
                                     </div>
                                     {activeChartData.explanation && (
                                         <div className="mt-auto bg-white/60 text-gray-700 text-[15px] font-medium leading-relaxed border border-gray-100 rounded-xl p-6 shadow-sm inline-block w-full">
-                                            <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span> 
+                                            <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span>
                                             {activeChartData.explanation}
                                         </div>
                                     )}

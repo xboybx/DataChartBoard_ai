@@ -6,7 +6,7 @@ import Chat from "@/models/Chat";
 import Message from "@/models/Message";
 import Dataset from "@/models/Dataset";
 import { AiGeneration } from "@/services/ai";
-import { generateDataPrompt } from "@/services/prompt";
+import { buildMessageArray } from "@/services/prompt";
 
 // GET: Fetch message history for a specific chat ID
 export async function GET(req, { params }) {
@@ -71,78 +71,69 @@ export async function POST(req, { params }) {
             return NextResponse.json({ error: "Dataset not found" }, { status: 404 });
         }
 
-        // 3. Save new User Message
-        await Message.create({
-            chatId: activeChat._id,
-            role: "user",
-            content: message
-        });
+        /* 3. Fetch History correctly (Before saving current message to avoid duplicates) */
+        const history = await Message.find({ chatId }).sort({ createdAt: 1 }).limit(10);
+        console.log(`📜 [EXISTING ROUTE] Fetched ${history.length} messages for context.`);
 
-        // 4. Fetch Conversation History to send to AI
-        const pastMessages = await Message.find({ chatId: activeChat._id })
-            .sort({ createdAt: -1 })
-            .limit(10);
+        /* 4. Build the structured messagesArray */
+        const messagesArray = buildMessageArray(
+            dataset.headers,
+            dataset.previewData,
+            history,
+            message
+        );
 
-        pastMessages.reverse();
-
-        let conversationHistoryStr = pastMessages.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join("\n");
-
-        // 5. Prepare AI Context using central service
-        const contextPrompt = generateDataPrompt(dataset.headers, dataset.previewData, message, conversationHistoryStr);
+        /* 5. Save current user message to DB */
+        await Message.create({ chatId, role: "user", content: message });
 
         // 6. Build AI Response
-        const aiResponseRaw = await AiGeneration(contextPrompt);
+        let aiResponseRaw;
+        try {
+            aiResponseRaw = await AiGeneration(messagesArray);
+        } catch (aiError) {
+            console.error("🔎 [EXISTING ROUTE] AI Error Detection:", aiError.status);
+            if (aiError.status === 429) {
+                // Extract the raw message from the provider (e.g. Groq details)
+                const providerMessage = aiError.error?.message || aiError.message || "Rate limit reached.";
+                return NextResponse.json({ 
+                    error: providerMessage,
+                    code: "RATE_LIMIT_EXCEEDED"
+                }, { status: 429 });
+            }
+            throw aiError; // Pass to general handler
+        }
 
         if (!aiResponseRaw) {
             return NextResponse.json({ error: "AI failed to respond" }, { status: 500 });
         }
 
-        let analysis = "Here is you Analysis: ";
+        let analysis = "Analysis complete.";
         let chart = [];
 
-
-        //Check weather ai decided to call the "Generate_charts" Tool
+        // 7. Tool call extraction with detailed logging
         if (aiResponseRaw.tool_calls && aiResponseRaw.tool_calls.length > 0) {
-            /* Now Ai sees the tools it has acess to and genreates a response ,that it want to call a tool 
-            In that respponse we need to see it there is a tool call we nee to loop and see wich function it want to execute
-            */
+            console.log(`🛠️ [EXISTING ROUTE] AI triggered ${aiResponseRaw.tool_calls.length} tools.`);
 
-            for (const toolCall of aiResponseRaw.tool_calls) { //It contains all the standartTools we Defined
-                /* now we take tool call name and its relative mapped function */
+            for (const toolCall of aiResponseRaw.tool_calls) {
                 const functionName = toolCall.function.name;
+                console.log(`🔧 [EXISTING ROUTE] Parsing: ${functionName}`);
 
                 try {
-                    /* Now Parse the arguments the ai provided for this function */
-                    const args = JSON.parse(toolCall.function.arguments)
-                    switch (functionName) {
-                        case "generate_charts":
-                            /* Extrac the data */
-                            analysis = args.analysis || aiResponseRaw.content || "Here is the Visulaization based on your Contenet: ";
+                    const args = JSON.parse(toolCall.function.arguments);
+                    console.log(`📦 [EXISTING ROUTE] Insights from AI:`, args.analysis?.substring(0, 50) + "...");
 
-                            chart = args.charts || []
-                            console.log("sucessfully generated the charts ", chart.length)
-                            break;
-
-                        default:
-                            console.log('Unknown Tool Call', functionName)
+                    if (functionName === "generate_charts") {
+                        analysis = args.analysis || analysis;
+                        chart = args.charts || [];
+                        console.log(`📊 [EXISTING ROUTE] Extracted ${chart.length} charts.`);
                     }
-
                 } catch (error) {
-                    console.error("Error parsing tool arguments: ", error);
-                    throw NextResponse.json({ message: "Calling Tool Failed" }, { status: 400 })
+                    console.error("❌ [EXISTING ROUTE] JSON Parse Error:", error);
                 }
-
             }
-
         } else if (aiResponseRaw.content) {
+            console.log("💬 [EXISTING ROUTE] AI response was plain text.");
             analysis = aiResponseRaw.content;
-            chart = [];
-            console.log("AI responded with plain text only.");
-        }
-
-        // Ensure content is not empty for the database
-        if (!analysis) {
-            analysis = "Here is the visualization based on your request.";
         }
 
         // 8. Save Assistant Message
@@ -153,6 +144,8 @@ export async function POST(req, { params }) {
             chartData: chart
         });
 
+        console.log("🏁 [EXISTING ROUTE] Finished. Returning to client.");
+
         return NextResponse.json({
             chatId: activeChat._id,
             response: assistantMessage.content,
@@ -160,8 +153,8 @@ export async function POST(req, { params }) {
         }, { status: 200 });
 
     } catch (error) {
-        console.error("Chat API Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("Chat API Error:", error.message);
+        return NextResponse.json({ error: "Something went wrong. Please try again later." }, { status: 500 });
     }
 }
 
