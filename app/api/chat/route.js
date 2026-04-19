@@ -105,31 +105,46 @@ export async function POST(req) {
 
         if (!aiResponseRaw) { return NextResponse.json({ error: "AI failed to respond. Check server logs for API errors." }, { status: 500 }); }
 
-        let analysis, chart;
+        let analysis = "No Analysis Provided";
+        let chart = [];
 
-        try {
-            if (!aiResponseRaw.content || typeof aiResponseRaw.content !== "string") {
-                throw new Error("AI returned empty or invalid content format");
+        //Check weather ai decided to call the "Generate_charts" Tool
+        if (aiResponseRaw.tool_calls && aiResponseRaw.tool_calls.length > 0) {
+            /* Now Ai sees the tools it has acess to and genreates a response ,that it want to call a tool 
+            In that respponse we need to see it there is a tool call we nee to loop and see wich function it want to execute
+            */
+
+            for (const toolCall of aiResponseRaw.tool_calls) { //It contains all the standartTools we Defined
+                /* now we take tool call name and its relative mapped function */
+                const functionName = toolCall.function.name;
+
+                try {
+                    /* Now Parse the arguments the ai provided for this function */
+                    const args = JSON.parse(toolCall.function.arguments)
+                    switch (functionName) {
+                        case "generate_charts":
+                            /* Extrac the data */
+                            analysis = args.analysis || aiResponseRaw.content || "Here is the Visulaization based on your Contenet: ";
+
+                            chart = args.charts || []
+                            console.log("sucessfully generated the charts ", chart.length)
+                            break;
+
+                        default:
+                            console.log('Unknown Tool Call', functionName)
+                    }
+
+                } catch (error) {
+                    console.error("Error parsing tool arguments: ", error);
+                    throw NextResponse.json({ message: "Calling Tool Failed" }, { status: 400 })
+                }
+
             }
 
-            // Clean the AI response by removing markdown and trimming whitespace
-            const jsonStringMatch = aiResponseRaw.content.match(/\{[\s\S]*\}/);
-
-            if (!jsonStringMatch) throw new Error("No JSON object found in response");
-
-            const aiJson = JSON.parse(jsonStringMatch[0]);
-
-            analysis = aiJson?.analysis || "Visualization generated successfully.";
-            chart = aiJson.chart || null;
-
-            console.log("analysis data extracted sucess: ", analysis)
-            console.log("Chart data extracted sucess: ", chart)
-
-        } catch (e) {
-            console.error("Error parsing AI JSON response:", e, "Original content:", aiResponseRaw.content);
-            // Fallback: If parsing fails, use the raw content as analysis and assume no chart
+        } else if (aiResponseRaw.content) {
             analysis = aiResponseRaw.content;
-            chart = null;
+            chart = [];
+            console.log("AI responded with plain text only.");
         }
 
         // Ensure content is not empty for the database

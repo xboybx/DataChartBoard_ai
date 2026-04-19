@@ -97,58 +97,47 @@ export async function POST(req, { params }) {
             return NextResponse.json({ error: "AI failed to respond" }, { status: 500 });
         }
 
-        let analysis, chart;
+        let analysis = "Here is you Analysis: ";
+        let chart = [];
 
-        try {
-            if (!aiResponseRaw.content || typeof aiResponseRaw.content !== "string") {
-                throw new Error("AI returned empty or invalid content format");
-            }
 
-            // Clean the AI response by removing markdown and trimming whitespace
-            const jsonStringMatch = aiResponseRaw.content.match(/\{[\s\S]*\}?/);
+        //Check weather ai decided to call the "Generate_charts" Tool
+        if (aiResponseRaw.tool_calls && aiResponseRaw.tool_calls.length > 0) {
+            /* Now Ai sees the tools it has acess to and genreates a response ,that it want to call a tool 
+            In that respponse we need to see it there is a tool call we nee to loop and see wich function it want to execute
+            */
 
-            if (!jsonStringMatch) throw new Error("No JSON object found in response");
+            for (const toolCall of aiResponseRaw.tool_calls) { //It contains all the standartTools we Defined
+                /* now we take tool call name and its relative mapped function */
+                const functionName = toolCall.function.name;
 
-            let jsonStr = jsonStringMatch[0];
+                try {
+                    /* Now Parse the arguments the ai provided for this function */
+                    const args = JSON.parse(toolCall.function.arguments)
+                    switch (functionName) {
+                        case "generate_charts":
+                            /* Extrac the data */
+                            analysis = args.analysis || aiResponseRaw.content || "Here is the Visulaization based on your Contenet: ";
 
-            // Attempt to repair truncated JSON by balancing braces/brackets
-            let aiJson;
-            try {
-                aiJson = JSON.parse(jsonStr);
-            } catch (parseErr) {
-                console.warn("Initial JSON parse failed, attempting repair...");
-                // Count unmatched openers (ignoring those inside strings)
-                let inString = false;
-                let escape = false;
-                const stack = [];
-                for (let i = 0; i < jsonStr.length; i++) {
-                    const ch = jsonStr[i];
-                    if (escape) { escape = false; continue; }
-                    if (ch === '\\' && inString) { escape = true; continue; }
-                    if (ch === '"') { inString = !inString; continue; }
-                    if (inString) continue;
-                    if (ch === '{') stack.push('}');
-                    else if (ch === '[') stack.push(']');
-                    else if (ch === '}' || ch === ']') stack.pop();
+                            chart = args.charts || []
+                            console.log("sucessfully generated the charts ", chart.length)
+                            break;
+
+                        default:
+                            console.log('Unknown Tool Call', functionName)
+                    }
+
+                } catch (error) {
+                    console.error("Error parsing tool arguments: ", error);
+                    throw NextResponse.json({ message: "Calling Tool Failed" }, { status: 400 })
                 }
-                // Append missing closers in reverse order
-                const closers = stack.reverse().join('');
-                jsonStr = jsonStr + closers;
-                aiJson = JSON.parse(jsonStr);
-                console.log("JSON repair succeeded by appending:", closers);
+
             }
 
-            analysis = aiJson?.analysis || "Visualization generated successfully.";
-            chart = aiJson.chart || null;
-
-        } catch (e) {
-            console.error("Error parsing AI JSON response:", e, "Original content:", aiResponseRaw?.content);
-            // Fallback: If parsing fails, use the raw content as analysis (unless it's literally "null") and assume no chart
-            const rawContent = aiResponseRaw?.content?.trim();
-            analysis = (rawContent && rawContent !== "null")
-                ? rawContent
-                : "The AI was not able to generate a formatted response for this query. Please try rephrasing.";
-            chart = null;
+        } else if (aiResponseRaw.content) {
+            analysis = aiResponseRaw.content;
+            chart = [];
+            console.log("AI responded with plain text only.");
         }
 
         // Ensure content is not empty for the database

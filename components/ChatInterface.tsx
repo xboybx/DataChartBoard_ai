@@ -213,7 +213,7 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
                                             </div>
                                         )}
 
-                                        {msg.chartData && (
+                                        {msg.role === "assistant" && msg.chartData && msg.chartData.length > 0 && (
                                             <button
                                                 onClick={() => setActiveChartData(msg.chartData)}
                                                 className="mt-4 flex items-center gap-2 bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all font-medium text-xs tracking-wide"
@@ -282,44 +282,90 @@ export default function ChatInterface({ chatId }: { chatId: string }) {
 
             <div
                 className={clsx(
-                    "h-full border-l border-white/50 bg-white/20 backdrop-blur-3xl flex flex-col absolute right-0 top-0 shadow-[-20px_0_40px_rgba(0,0,0,0.03)] z-30",
+                    "h-full border-l border-white/50 bg-[#f8fafc]/90 backdrop-blur-3xl flex flex-col absolute right-0 top-0 shadow-[-20px_0_50px_rgba(0,0,0,0.05)] z-30 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
                     activeChartData ? "translate-x-0" : "translate-x-full"
                 )}
                 style={{ width: activeChartData ? `${100 - chatWidth}%` : '50%' }}
             >
-                <div className="flex items-center justify-between p-5 border-b border-white/60 bg-transparent">
+                <div className="flex items-center justify-between px-8 py-5 border-b border-gray-200/60 bg-white/60 backdrop-blur-xl shrink-0">
                     <div className="flex items-center gap-3 font-semibold text-gray-800 tracking-wide">
-                        <BarChart2 className="w-5 h-5 text-purple-500" />
-                        Data Visualization
+                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shadow-sm border border-purple-200/50">
+                            <BarChart2 className="w-4 h-4 text-purple-600" />
+                        </div>
+                        Enterprise Insights Console
                     </div>
                     <button
                         onClick={() => setActiveChartData(null)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100/80 transition-colors"
+                        className="p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 shadow-sm border border-transparent hover:border-gray-200 transition-all"
                     >
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                <div className="flex-1 p-6 flex flex-col justify-start overflow-y-auto w-full">
+                <div className="flex-1 p-6 lg:p-8 flex flex-col justify-start overflow-y-auto w-full relative">
+                    <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-white/60 to-transparent pointer-events-none" />
+                    
                     {activeChartData ? (
-                        <div className="w-full flex flex-col gap-10">
-                            <ErrorBoundary>
-                                {Array.isArray(activeChartData) ? (
-                                    activeChartData.map((chartItem, idx) => (
-                                        <div key={idx} className="w-full h-[400px] shrink-0 border border-white/60 bg-white/30 backdrop-blur-2xl rounded-2xl p-5 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
-                                            <ChartDisplay chartData={chartItem} />
+                        <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 pb-20 relative z-10">
+                            {Array.isArray(activeChartData) ? (
+                                activeChartData.map((chartItem, idx) => {
+                                    const isFullWidth = (idx === 0 && activeChartData.length % 2 !== 0) || activeChartData.length === 1;
+                                    return (
+                                        <div 
+                                            key={idx} 
+                                            className={clsx(
+                                                "w-full shrink-0 border border-white bg-white/70 backdrop-blur-2xl rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-col gap-5 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-500",
+                                                isFullWidth ? "xl:col-span-2" : "col-span-1"
+                                            )}
+                                        >
+                                            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                                                <h3 className="font-semibold text-gray-800 tracking-tight flex items-center gap-2 text-lg">
+                                                    <span className="w-2.5 h-2.5 rounded-full shadow-sm bg-purple-500" />
+                                                    {chartItem.type ? chartItem.type.charAt(0).toUpperCase() + chartItem.type.slice(1) : "Analysis"} Widget
+                                                </h3>
+                                            </div>
+                                            
+                                            <div className={clsx("w-full relative", isFullWidth ? "h-[450px]" : "h-[320px]")}>
+                                                <ErrorBoundary>
+                                                    <ChartDisplay chartData={chartItem} />
+                                                </ErrorBoundary>
+                                            </div>
+
+                                            {chartItem.explanation && (
+                                                <div className="mt-auto bg-gray-50/80 text-gray-600 text-[13px] font-medium leading-relaxed border border-gray-100 rounded-xl p-4 shadow-sm inline-block w-full">
+                                                    <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span> 
+                                                    {chartItem.explanation}
+                                                </div>
+                                            )}
                                         </div>
-                                    ))
-                                ) : (
-                                    <div className="w-full h-[450px]">
-                                        <ChartDisplay chartData={activeChartData} />
+                                    );
+                                })
+                            ) : (
+                                <div className="w-full xl:col-span-2 border border-white bg-white/70 backdrop-blur-2xl rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.03)] flex flex-col gap-4 hover:shadow-[0_20px_40px_rgba(0,0,0,0.06)] transition-all duration-500">
+                                    <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                                        <h3 className="font-semibold text-gray-800 tracking-tight flex items-center gap-2 text-lg">
+                                            <span className="w-2.5 h-2.5 rounded-full shadow-sm bg-purple-500" />
+                                            Primary Analysis
+                                        </h3>
                                     </div>
-                                )}
-                            </ErrorBoundary>
+                                    <div className="w-full h-[450px] relative">
+                                        <ErrorBoundary>
+                                            <ChartDisplay chartData={activeChartData} />
+                                        </ErrorBoundary>
+                                    </div>
+                                    {activeChartData.explanation && (
+                                        <div className="mt-auto bg-gray-50/80 text-gray-600 text-[13px] font-medium leading-relaxed border border-gray-100 rounded-xl p-4 shadow-sm inline-block w-full">
+                                            <span className="text-purple-600 font-bold mr-2 text-xs uppercase tracking-wider">Insight:</span> 
+                                            {activeChartData.explanation}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     ) : (
-                        <div className="text-gray-500 text-center text-sm my-auto">
-                            Select a chart from the conversation to view it here.
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                            <BarChart2 className="w-16 h-16 mb-4 opacity-20" />
+                            <p className="text-sm">Select a chart from the conversation to view it here.</p>
                         </div>
                     )}
                 </div>

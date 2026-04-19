@@ -16,8 +16,8 @@ const MessageSchema = new mongoose.Schema({
         required: true,
     },
     chartData: {
-        type: Object,
-        default: null,
+        type: [Object],
+        default: [],
     },
     createdAt: {
         type: Date,

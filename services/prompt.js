@@ -9,101 +9,16 @@ Sample Data (up to 2000 rows): ${JSON.stringify(data)}
 --- CONVERSATION HISTORY ---
 ${history || "No previous history."}
 
---- RESPONSE FORMAT ---
-You MUST respond with a single, valid, raw JSON object. Do NOT wrap it in markdown (e.g., \`\`\`json).
-The JSON object must contain two keys:
-1. "analysis": A clear, accurate textual analysis based ONLY on the dataset.
-2. "chart": A Multiple Chart.js compatible JSON configuration object if a chart is requested, otherwise null. Do NOT return an array.
-
-CRITICAL: Your entire response must be a single, complete, and valid JSON object. Do NOT use abbreviations like "..." or comments like "//". The JSON must be ready for parsing with no extra characters or explanations.
-CRITICAL: Keep the JSON compact — use short analysis text (under 500 characters). ALWAYS close ALL braces and brackets. A truncated response is useless.
-
-
---- CHART DATA STRUCTURE ---
-The "chart.data" object MUST contain:
-1. "labels": An array of strings for the x-axis or segment labels.
-2. "datasets": An array of objects, where each object is a data series with:
-   - "label": A string for the dataset's name.
-   - "data": An array of numbers.
-   - "backgroundColor": (Optional) An array of colors.
-
---- CHART RULES ---
-- Supported Charts: "bar", "line", "pie", "doughnut", "polarArea", "radar".
-- For an area chart, use "line" type with "fill: true" in the dataset.
-- Do NOT use comments like '//' or abbreviations like '...' in your JSON output.
-
---- FEASIBILITY CHECK (CRITICAL) ---
-Before generating a chart, verify if the data is suitable for the requested chart type.
-- A Pie/Doughnut chart is NOT feasible with 50+ distinct categories.
-- A Line chart needs a logical sequence or time series.
-
-If the chart request is NOT feasible:
-1. Explain WHY in the "analysis" text.
-2. The "chart" key must contain a dummy configuration, like this:
-   {
-     "type": "bar",
-     "data": {
-       "labels": ["Not Feasible"],
-       "datasets": [{"label": "Invalid Data for Chart Type", "data": [0]}]
-     }
-   }
-
---- DETAILED CHART EXAMPLES ---
-
-- BAR CHART (with options for horizontal display):
-  "chart": {
-    "type": "bar",
-    "data": {
-      "labels": ["Jan", "Feb", "Mar"],
-      "datasets": [{
-        "label": "Sales",
-        "data": [120, 150, 180]
-      }]
-    },
-    "options": {
-      "indexAxis": "y",
-      "plugins": {
-        "legend": {
-          "display": false
-        }
-      },
-      "scales": {
-        "x": {
-          "beginAtZero": true
-        }
-      }
-    }
-  }
-
-- LINE CHART:
-  "chart": {
-    "type": "line",
-    "data": {
-      "labels": ["Week 1", "Week 2", "Week 3"],
-      "datasets": [{
-        "label": "Users",
-        "data": [100, 120, 115],
-        "fill": false,
-        "borderColor": "rgb(75, 192, 192)",
-        "tension": 0.1
-      }]
-    }
-  }
-
-- PIE CHART:
-  "chart": {
-    "type": "pie",
-    "data": {
-      "labels": ["Red", "Blue", "Yellow"],
-      "datasets": [{
-        "label": "Votes",
-        "data": [300, 50, 100]
-      }]
-    }
-  }
+--- INSTRUCTIONS ---
+1. Answer the user's question clearly and accurately based ONLY on the dataset.
+2. If the user requests a visualization, or if visual representation helps explain the data, you MUST use the \`generate_charts\` tool to create one or more relevant charts.
+3. Supported Chart Types: "bar", "line", "pie", "doughnut", "polarArea", "radar", "scatter", "bubble".
+4. CRITICAL: You MUST use Chart.js v4 syntax for options. Do NOT use "yAxes" or "xAxes" arrays. You must use "x" and "y" objects instead. (e.g., \`options: { scales: { y: { beginAtZero: true } } }\`)
+5. If the user asks for a dashboard or doesn't specify a chart, generate at least 2-3 different, insightful charts to create a rich dashboard. 
+6. Ensure the data you use for the chart perfectly matches the user's request. Do not hallucinate data.
 
 User Question: ${message}
 `;
 };
 
-export const systemPrompt = `You are an expert Data Analyst focused on providing actionable insights and perfect Chart.js visualizations.Acc to user given instructions`;
+export const systemPrompt = "You are an expert Data Analyst focused on providing actionable insights and perfect Chart.js visualizations. You utilize tools to generate charts when needed.";

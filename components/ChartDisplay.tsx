@@ -1,14 +1,14 @@
 
 "use client";
 
-import { Bar, Line, Pie, Doughnut, PolarArea, Radar } from 'react-chartjs-2';
+import { Bar, Line, Pie, Doughnut, PolarArea, Radar, Scatter, Bubble } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Filler, BarElement } from 'chart.js';
 import { AlertTriangle } from 'lucide-react';
 
 ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, PointElement, LineElement, RadialLinearScale, Filler, BarElement);
 
 interface ChartData {
-    type: 'bar' | 'line' | 'pie' | 'doughnut' | 'polarArea' | 'radar';
+    type: 'bar' | 'line' | 'pie' | 'doughnut' | 'polarArea' | 'radar' | 'scatter' | 'bubble';
     data: {
         labels: string[];
         datasets: Array<{
@@ -26,8 +26,6 @@ const ChartDisplay = ({ chartData }: { chartData: ChartData }) => {
     const dataIsValid =
         chartData &&
         chartData.data &&
-        Array.isArray(chartData.data.labels) &&
-        chartData.data.labels.length > 0 &&
         Array.isArray(chartData.data.datasets) &&
         chartData.data.datasets.length > 0 &&
         chartData.data.datasets.every(ds => Array.isArray(ds.data) && ds.data.length > 0);
@@ -49,6 +47,8 @@ const ChartDisplay = ({ chartData }: { chartData: ChartData }) => {
         doughnut: Doughnut,
         polarArea: PolarArea,
         radar: Radar,
+        scatter: Scatter,
+        bubble: Bubble,
     };
 
     const ChartComponent = chartComponents[chartData.type];
